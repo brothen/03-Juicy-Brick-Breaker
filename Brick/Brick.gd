@@ -15,6 +15,9 @@ func _physics_process(_delta):
 		queue_free()
 
 func hit(_ball):
+	var brick_sound=get_node_or_null("/root/Game/Brick_Sound")
+	if brick_sound!=null:
+		brick_sound.play()
 	die()
 
 func die():
@@ -23,7 +26,7 @@ func die():
 	$ColorRect.hide()
 	Global.update_score(score)
 	if not Global.feverish:
-		Global.update_fever(score)
+		Global.update_fever(30)
 	get_parent().check_level()
 	if randf() < powerup_prob:
 		var Powerup_Container = get_node_or_null("/root/Game/Powerup_Container")

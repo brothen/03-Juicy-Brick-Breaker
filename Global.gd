@@ -9,12 +9,12 @@ var fever = 0
 var fever_multiplier = 0.15
 var starting_in = 0
 
-var fever_decay = 0.1
+var fever_decay = 0.01
 var feverish = false
 
 
 export var default_starting_in = 4
-export var default_lives = 5
+export var default_lives = 10
 
 func _ready():
 	pause_mode = Node.PAUSE_MODE_PROCESS

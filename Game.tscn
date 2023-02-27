@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=2]
+[gd_scene load_steps=21 format=2]
 
 [ext_resource path="res://Brick/Brick_Container.gd" type="Script" id=1]
 [ext_resource path="res://Paddle/Paddle.tscn" type="PackedScene" id=2]
@@ -9,15 +9,117 @@
 [ext_resource path="res://UI/HUD.tscn" type="PackedScene" id=7]
 [ext_resource path="res://UI/Instructions.tscn" type="PackedScene" id=8]
 [ext_resource path="res://Effects/Fever.gd" type="Script" id=9]
+[ext_resource path="res://Assets/die.wav" type="AudioStream" id=10]
+[ext_resource path="res://Assets/brick.wav" type="AudioStream" id=11]
+[ext_resource path="res://Assets/wall.wav" type="AudioStream" id=12]
+[ext_resource path="res://Assets/music.mp3" type="AudioStream" id=13]
+[ext_resource path="res://Assets/paddle.wav" type="AudioStream" id=14]
+[ext_resource path="res://UI/Background.tres" type="Material" id=15]
 
-[sub_resource type="RectangleShape2D" id=1]
+[sub_resource type="RectangleShape2D" id=4]
 extents = Vector2( 100, 500 )
 
 [sub_resource type="RectangleShape2D" id=2]
 extents = Vector2( 612, 100 )
 
+[sub_resource type="Environment" id=5]
+background_mode = 4
+fog_color = Color( 0.247059, 0.254902, 0.262745, 1 )
+fog_sun_color = Color( 1, 1, 1, 1 )
+fog_sun_amount = 0.59
+fog_depth_enabled = false
+fog_depth_curve = 0.267943
+fog_transmit_enabled = true
+fog_transmit_curve = 0.732042
+fog_height_max = 228.6
+dof_blur_near_enabled = true
+dof_blur_near_distance = 1.6
+glow_enabled = true
+glow_bloom = 0.03
+glow_blend_mode = 0
+glow_bicubic_upscale = true
+
+[sub_resource type="Shader" id=6]
+code = "// Water shader
+
+shader_type canvas_item;
+uniform int OCTAVE = 6;
+uniform float mulscale = 5.0;
+uniform float height = 0.6;
+uniform float tide = 0.1;
+uniform float foamthickness = 0.1;
+uniform float timescale = 1.0;
+uniform float waterdeep = 0.3;
+uniform vec4 WATER_COL : hint_color =  vec4(0.76, 0.44, 0.1, 1.0);
+uniform vec4 WATER2_COL : hint_color =  vec4(0.67, 0.39, 0.09, 1.0);
+uniform vec4 FOAM_COL : hint_color = vec4(0.9, 0.55, 0.13, 1.0);
+
+
+float rand(vec2 input){
+	return fract(sin(dot(input,vec2(23.53,44.0)))*42350.45);
+}
+
+float perlin(vec2 input){
+	vec2 i = floor(input);
+	vec2 j = fract(input);
+	vec2 coord = smoothstep(0.,1.,j);
+	
+	float a = rand(i);
+	float b = rand(i+vec2(1.0,0.0));
+	float c = rand(i+vec2(0.0,1.0));
+	float d = rand(i+vec2(1.0,1.0));
+
+	return mix(mix(a,b,coord.x),mix(c,d,coord.x),coord.y);
+}
+
+float fbm(vec2 input){
+	float value = 0.0;
+	float scale = 0.5;
+	
+	for(int i = 0; i < OCTAVE; i++){
+		value += perlin(input)*scale;
+		input*=2.0;
+		scale*=0.5;
+	}
+	return value;
+}
+
+void fragment(){
+	float newtime = TIME*timescale;
+	float fbmval = fbm(vec2(UV.x*mulscale+0.2*sin(0.3*newtime)+0.15*newtime,-0.05*newtime+UV.y*mulscale+0.1*cos(0.68*newtime)));
+	float fbmvalshadow = fbm(vec2(UV.x*mulscale+0.2*sin(-0.6*newtime + 25.0 * UV.y)+0.15*newtime+3.0,-0.05*newtime+UV.y*mulscale+0.13*cos(-0.68*newtime))-7.0+0.1*sin(0.43*newtime));
+	float myheight = height+tide*sin(newtime+5.0*UV.x-8.0*UV.y);
+	float shadowheight = height+tide*1.3*cos(newtime+2.0*UV.x-2.0*UV.y);
+	float withinFoam = step(myheight, fbmval)*step(fbmval, myheight + foamthickness);
+	float shadow = (1.0-withinFoam)*step(shadowheight, fbmvalshadow)*step(fbmvalshadow, shadowheight + foamthickness * 0.7);
+	COLOR = withinFoam*FOAM_COL + shadow*WATER2_COL + ((1.0-withinFoam)*(1.0-shadow))*WATER_COL;
+	//COLOR = vec4(1.0,1.0,1.0,fbmval);
+}"
+
+[sub_resource type="ShaderMaterial" id=7]
+shader = SubResource( 6 )
+shader_param/OCTAVE = 6
+shader_param/mulscale = 5.0
+shader_param/height = 0.6
+shader_param/tide = 0.1
+shader_param/foamthickness = 0.3
+shader_param/timescale = 1.0
+shader_param/waterdeep = 0.3
+shader_param/WATER_COL = Color( 0.364706, 0.364706, 0.364706, 0.117647 )
+shader_param/WATER2_COL = Color( 0.772549, 0.772549, 0.772549, 0.196078 )
+shader_param/FOAM_COL = Color( 0.239216, 0.239216, 0.239216, 0.196078 )
+
 [node name="Game" type="Node2D"]
 script = ExtResource( 4 )
+
+[node name="Background" type="CanvasLayer" parent="."]
+layer = -1
+
+[node name="Background" type="ColorRect" parent="Background"]
+material = ExtResource( 15 )
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 1, 1, 1, 0.196078 )
 
 [node name="Wall_Container" type="Node2D" parent="."]
 
@@ -29,10 +131,11 @@ margin_left = -190.0
 margin_top = -100.0
 margin_right = 10.0
 margin_bottom = 900.0
+color = Color( 0, 0, 0, 1 )
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Left"]
 position = Vector2( -90, 400 )
-shape = SubResource( 1 )
+shape = SubResource( 4 )
 
 [node name="Wall_Right" type="StaticBody2D" parent="Wall_Container"]
 position = Vector2( 1024, 0 )
@@ -43,10 +146,11 @@ margin_left = -10.0
 margin_top = -100.0
 margin_right = 190.0
 margin_bottom = 900.0
+color = Color( 0, 0, 0, 1 )
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Right"]
 position = Vector2( 90, 400 )
-shape = SubResource( 1 )
+shape = SubResource( 4 )
 
 [node name="Wall_Top" type="StaticBody2D" parent="Wall_Container"]
 script = ExtResource( 6 )
@@ -56,6 +160,7 @@ margin_left = -100.0
 margin_top = -190.0
 margin_right = 1124.0
 margin_bottom = 10.0
+color = Color( 0, 0, 0, 1 )
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Top"]
 position = Vector2( 512, -90 )
@@ -77,18 +182,52 @@ script = ExtResource( 3 )
 [node name="Fever" type="Node2D" parent="."]
 script = ExtResource( 9 )
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Fever"]
+environment = SubResource( 5 )
+
 [node name="Timer" type="Timer" parent="Fever"]
+
+[node name="Tween" type="Tween" parent="Fever"]
+
+[node name="Fog" type="CanvasLayer" parent="Fever"]
+
+[node name="ColorRect" type="ColorRect" parent="Fever/Fog"]
+material = SubResource( 7 )
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0, 0, 0, 0.52549 )
 
 [node name="UI" type="CanvasLayer" parent="."]
 
 [node name="HUD" parent="UI" instance=ExtResource( 7 )]
 pause_mode = 0
-visible = false
 
 [node name="Pause_Menu" parent="UI" instance=ExtResource( 5 )]
 visible = false
 
 [node name="Instructions" parent="UI" instance=ExtResource( 8 )]
 pause_mode = 2
+
+[node name="Brick_Sound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource( 11 )
+
+[node name="Die_Sound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource( 10 )
+
+[node name="Paddle_Sound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource( 14 )
+
+[node name="Wall_Sound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource( 12 )
+
+[node name="Music" type="AudioStreamPlayer" parent="."]
+stream = ExtResource( 13 )
+autoplay = true
 
 [connection signal="timeout" from="Fever/Timer" to="Fever" method="_on_Timer_timeout"]
